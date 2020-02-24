@@ -15,8 +15,8 @@
  */
 package com.phpbb.crowd;
 
-import com.atlassian.crowd.embedded.api.PasswordCredential;
 import com.atlassian.crowd.directory.RemoteDirectory;
+import com.atlassian.crowd.embedded.api.PasswordCredential;
 import com.atlassian.crowd.exception.*;
 import com.atlassian.crowd.model.*;
 import com.atlassian.crowd.model.user.*;
@@ -28,11 +28,13 @@ import com.atlassian.crowd.search.query.entity.restriction.*;
 import com.atlassian.crowd.search.ReturnType;
 import com.atlassian.crowd.search.Entity;
 import com.atlassian.crowd.embedded.api.SearchRestriction;
+import com.atlassian.crowd.util.BoundedCount;
 
 import java.rmi.RemoteException;
 import java.util.*;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.*;
@@ -45,7 +47,7 @@ import java.net.*;
  */
 public class phpBBDirectoryServer implements RemoteDirectory
 {
-    private static final Logger log = Logger.getLogger(phpBBDirectoryServer.class);
+    private static final Logger log = LoggerFactory.getLogger(phpBBDirectoryServer.class);
 
     private long directoryId;
     private Map<String,String> attributes;
@@ -63,11 +65,13 @@ public class phpBBDirectoryServer implements RemoteDirectory
         serverUrl = System.getenv("CROWD_PHPBB_ROOT_URL");
     }
 
+    @Override
     public long getDirectoryId()
     {
         return directoryId;
     }
 
+    @Override
     public void setDirectoryId(long directoryId)
     {
         this.directoryId = directoryId;
@@ -78,28 +82,33 @@ public class phpBBDirectoryServer implements RemoteDirectory
         return "phpbbauth";
     }
 
+    @Override
     public String getDescriptiveName()
     {
         return "phpBB Directory Server";
     }
 
+    @Override
     public void setAttributes(Map<String,String> attributes)
     {
         this.attributes = attributes;
     }
 
+    @Override
     public Set<String> getValues(String name)
     {
         log.info("crowd-phpbbauth-plugin: getAttributes: " + name);
         return new HashSet<String>();
     }
 
+    @Override
     public String getValue(String name)
     {
         log.info("crowd-phpbbauth-plugin: getAttribute: " + name);
         return "";
     }
 
+    @Override
     public Set<String> getKeys()
     {
         log.info("crowd-phpbbauth-plugin: getAttributeNames");
@@ -112,11 +121,13 @@ public class phpBBDirectoryServer implements RemoteDirectory
         return false;
     }
 
+    @Override
     public boolean isEmpty()
     {
         return true;
     }
 
+    @Override
     public User findUserByName(String name)
         throws UserNotFoundException
     {
@@ -137,6 +148,15 @@ public class phpBBDirectoryServer implements RemoteDirectory
 
     }
 
+    @Override
+    public User findUserByExternalId(String externalId)
+        throws UserNotFoundException, OperationFailedException
+    {
+        log.info("crowd-phpbbauth-plugin: findUserByExternalId: " + externalId);
+        throw new OperationFailedException();
+    }
+
+    @Override
     public UserWithAttributes findUserWithAttributesByName(String name)
         throws UserNotFoundException, OperationFailedException
     {
@@ -168,6 +188,7 @@ public class phpBBDirectoryServer implements RemoteDirectory
      * @throws   InvalidAuthenticationException  Invalid username or password.
      * @throws   ObjectNotFoundException         Any other errors
      */
+    @Override
     public User authenticate(String name, PasswordCredential credential)
         throws UserNotFoundException, InactiveAccountException, InvalidAuthenticationException, ExpiredCredentialException, OperationFailedException
     {
@@ -189,11 +210,17 @@ public class phpBBDirectoryServer implements RemoteDirectory
 
         if (!result.get(0).equals("success"))
         {
+            //NOTE: These messages will only appear in Crowd. Jira will ignore this and simply show "Sorry, your username and password are incorrect"
             String error = result.get(1);
 
-            if (error.equals("LOGIN_ERROR_ATTEMPTS") || error.equals("ACTIVE_ERROR"))
+            if (error.equals("LOGIN_ERROR_ATTEMPTS"))
             {
-                throw new InactiveAccountException(name);
+                throw new InvalidAuthenticationException("Too many failed logins on forum.");
+            }
+
+            if (error.equals("ACTIVE_ERROR"))
+            {
+                throw new InactiveAccountException("Account is inactive.");
             }
 
             throw new InvalidAuthenticationException("Username or password are incorrect.");
@@ -211,48 +238,62 @@ public class phpBBDirectoryServer implements RemoteDirectory
         }
     }
 
+    @Override
     public User addUser(UserTemplate user, PasswordCredential credential)
         throws OperationFailedException
     {
         throw new OperationFailedException();
     }
 
+    @Override
+    public UserWithAttributes addUser(UserTemplateWithAttributes user, PasswordCredential credential)
+            throws OperationFailedException {
+                throw new OperationFailedException();
+    }
+
+    @Override
     public User updateUser(UserTemplate user)
         throws OperationFailedException
     {
         throw new OperationFailedException();
     }
 
+    @Override
     public void updateUserCredential(String username, PasswordCredential credential)
         throws OperationFailedException
     {
         throw new OperationFailedException();
     }
 
+    @Override
     public User renameUser(String oldName, String newName)
         throws OperationFailedException, InvalidUserException
     {
         throw new OperationFailedException();
     }
 
+    @Override
     public void storeUserAttributes(String username, Map<String,Set<String>> attributes)
         throws OperationFailedException
     {
         throw new OperationFailedException();
     }
 
+    @Override
     public void removeUserAttributes(String username, String attributeName)
         throws OperationFailedException
     {
         throw new OperationFailedException();
     }
 
+    @Override
     public void removeUser(String name)
         throws OperationFailedException
     {
         throw new OperationFailedException();
     }
 
+    @Override
     public List searchUsers(EntityQuery query)
     {
         log.info("crowd-phpbbauth-plugin: searchUsers");
@@ -263,6 +304,7 @@ public class phpBBDirectoryServer implements RemoteDirectory
         return list;
     }
 
+    @Override
     public Group findGroupByName(String name)
         throws GroupNotFoundException
     {
@@ -282,6 +324,7 @@ public class phpBBDirectoryServer implements RemoteDirectory
         return (Group) list.get(0);
     }
 
+    @Override
     public GroupWithAttributes findGroupWithAttributesByName(String name)
         throws OperationFailedException, GroupNotFoundException
     {
@@ -293,42 +336,49 @@ public class phpBBDirectoryServer implements RemoteDirectory
         return (GroupWithAttributes) new GroupEntityCreator(getDirectoryId()).attachAttributes(group);
     }
 
+    @Override
     public Group addGroup(GroupTemplate group)
         throws OperationFailedException
     {
         throw new OperationFailedException();
     }
 
+    @Override
     public Group updateGroup(GroupTemplate group)
         throws ReadOnlyGroupException
     {
         throw new ReadOnlyGroupException(group.getName());
     }
 
+    @Override
     public Group renameGroup(String oldName, String newName)
         throws OperationFailedException
     {
         throw new OperationFailedException();
     }
 
+    @Override
     public void storeGroupAttributes(String groupName, Map<String,Set<String>> attributes)
         throws OperationFailedException
     {
         throw new OperationFailedException();
     }
 
+    @Override
     public void removeGroupAttributes(String groupName, String attributeName)
         throws OperationFailedException
     {
         throw new OperationFailedException();
     }
 
+    @Override
     public void removeGroup(String name)
         throws ReadOnlyGroupException
     {
         throw new ReadOnlyGroupException(name);
     }
 
+    @Override
     public List searchGroups(EntityQuery query)
     {
         log.info("crowd-phpbbauth-plugin: searchGroups");
@@ -339,6 +389,7 @@ public class phpBBDirectoryServer implements RemoteDirectory
         return list;
     }
 
+    @Override
     public boolean isUserDirectGroupMember(String username, String groupName)
     {
         log.info("crowd-phpbbauth-plugin: isUserDirectGroupMember: " + username + ", " + groupName);
@@ -381,36 +432,49 @@ public class phpBBDirectoryServer implements RemoteDirectory
      *
      * @return   Always false.
      */
+    @Override
     public boolean isGroupDirectGroupMember(String childGroup, String parentGroup)
     {
         log.info("crowd-phpbbauth-plugin: isGroupDirectGroupMember");
         return false;
     }
 
+    @Override
+    public BoundedCount countDirectMembersOfGroup(String groupName, int querySizeHint)
+        throws OperationFailedException
+    {
+        throw new OperationFailedException();
+    }
+
+    @Override
     public void addUserToGroup(String username, String groupName)
         throws ReadOnlyGroupException
     {
         throw new ReadOnlyGroupException(groupName);
     }
 
+    @Override
     public void addGroupToGroup(String childGroup, String parentGroup)
         throws ReadOnlyGroupException
     {
         throw new ReadOnlyGroupException(parentGroup);
     }
 
+    @Override
     public void removeUserFromGroup(String username, String groupName)
         throws ReadOnlyGroupException
     {
         throw new ReadOnlyGroupException(groupName);
     }
 
+    @Override
     public void removeGroupFromGroup(String childGroup, String parentGroup)
         throws MembershipNotFoundException
     {
         throw new MembershipNotFoundException(childGroup, parentGroup);
     }
 
+    @Override
     public List searchGroupRelationships(MembershipQuery query)
     {
         log.info("crowd-phpbbauth-plugin: searchGroupRelationships");
@@ -423,7 +487,7 @@ public class phpBBDirectoryServer implements RemoteDirectory
         SearchRestriction searchRestriction = new TermRestriction(
             new PropertyImpl("name", String.class),
             MatchMode.EXACTLY_MATCHES,
-            query.getEntityNameToMatch()
+            query.getEntityNamesToMatch().iterator().next() // We only operate on single search terms, so grab the first
         );
 
         if (query.getEntityToMatch().getEntityType() != Entity.GROUP)
@@ -474,10 +538,18 @@ public class phpBBDirectoryServer implements RemoteDirectory
         return list;
     }
 
+    @Override
     public void testConnection()
         throws OperationFailedException
     {
         // could implement a simple http request here
+    }
+
+    @Override
+    public void expireAllPasswords()
+        throws OperationFailedException
+    {
+        throw new OperationFailedException();
     }
 
     /**
@@ -485,16 +557,31 @@ public class phpBBDirectoryServer implements RemoteDirectory
      *
      * @return   Always false.
      */
+    @Override
     public boolean supportsNestedGroups()
     {
         return false;
     }
 
+    @Override
+    public boolean supportsPasswordExpiration()
+    {
+        return false;
+    }
+
+    @Override
+    public boolean supportsSettingEncryptedCredential()
+    {
+        return false;
+    }
+
+    @Override
     public RemoteDirectory getAuthoritativeDirectory()
     {
         return (RemoteDirectory) this;
     }
 
+    @Override
     public Iterable<Membership> getMemberships()
         throws OperationFailedException
     {
@@ -502,11 +589,13 @@ public class phpBBDirectoryServer implements RemoteDirectory
         throw new OperationFailedException();
     }
 
+    @Override
     public boolean isRolesDisabled()
     {
         return true;
     }
 
+    @Override
     public boolean supportsInactiveAccounts()
     {
         return true;
@@ -571,8 +660,13 @@ public class phpBBDirectoryServer implements RemoteDirectory
         else if (restriction instanceof TermRestriction)
         {
             TermRestriction termRestriction = (TermRestriction) restriction;
+            String value = "";
+            if (termRestriction.getValue() != null)
+            {
+                value = termRestriction.getValue().toString();
+            }
 
-            return "{\"mode\": \"" + termRestriction.getMatchMode().toString() + "\", \"property\": \"" + escape(termRestriction.getProperty().getPropertyName()) + "\", \"value\": \"" + escape(termRestriction.getValue().toString()) + "\"}";
+            return "{\"mode\": \"" + termRestriction.getMatchMode().toString() + "\", \"property\": \"" + escape(termRestriction.getProperty().getPropertyName()) + "\", \"value\": \"" + escape(value) + "\"}";
         }
         else if (restriction instanceof BooleanRestrictionImpl)
         {
@@ -633,8 +727,13 @@ public class phpBBDirectoryServer implements RemoteDirectory
                 data += URLEncoder.encode(entry.getValue(), "UTF-8");
                 data += "&";
             }
+            String api_url = serverUrl;
+            if (serverUrl.charAt(serverUrl.length() - 1) != '/')
+            {
+                api_url += "/";
+            }
 
-            URL url = new URL(serverUrl + "auth_api.php");
+            URL url = new URL(api_url + "auth_api.php");
 
             URLConnection connection = url.openConnection();
             connection.setDoOutput(true);

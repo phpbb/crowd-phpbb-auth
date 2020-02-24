@@ -1,0 +1,10 @@
+<atlassian-plugin key="${atlassian.plugin.key}" name="${project.name}" plugins-version="1">
+    <plugin-info>
+        <description>${project.description}</description>
+        <version>${project.version}</version>
+        <vendor name="${project.organization.name}" url="${project.organization.url}" />
+        <bundle-instructions>
+            <Import-Package>com.phpbb.crowd,*;resolution:=optional</Import-Package>
+        </bundle-instructions>
+    </plugin-info>
+</atlassian-plugin>

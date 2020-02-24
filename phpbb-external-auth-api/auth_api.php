@@ -29,19 +29,16 @@ $root_path = './';
 $phpbb_root_path = (defined('PHPBB_ROOT_PATH')) ? PHPBB_ROOT_PATH : './../community/';
 $phpEx = substr(strrchr(__FILE__, '.'), 1);
 
-// Report all errors, except notices and deprecation messages
-if (!defined('E_DEPRECATED'))
-{
-	define('E_DEPRECATED', 8192);
-}
-error_reporting(E_ALL ^ E_NOTICE ^ E_DEPRECATED);
+require($phpbb_root_path . 'includes/startup.' . $phpEx);
+require($phpbb_root_path . 'phpbb/class_loader.' . $phpEx);
 
-if (version_compare(PHP_VERSION, '6.0.0-dev', '<'))
-{
-	@set_magic_quotes_runtime(0);
-}
+$phpbb_class_loader = new \phpbb\class_loader('phpbb\\', "{$phpbb_root_path}phpbb/", $phpEx);
+$phpbb_class_loader->register();
 
-define('STRIP', (get_magic_quotes_gpc()) ? true : false);
+$phpbb_config_php_file = new \phpbb\config_php_file($phpbb_root_path, $phpEx);
+extract($phpbb_config_php_file->get_all());
+
+
 
 // Before we actually initialise all files, maybe we could simply return the important part quickly?
 if ($api_config['api_cache_users'] && !empty($_POST['action']) && $_POST['action'] == 'searchUsers')
@@ -65,33 +62,50 @@ if (!defined('PHPBB_INSTALLED') || empty($dbms) || empty($acm_type))
 }
 
 // Include files
-require($phpbb_root_path . 'includes/acm/acm_' . $acm_type . '.' . $phpEx);
-require($phpbb_root_path . 'includes/cache.' . $phpEx);
-require($phpbb_root_path . 'includes/db/' . $dbms . '.' . $phpEx);
 require($phpbb_root_path . 'includes/constants.' . $phpEx);
 require($phpbb_root_path . 'includes/utf/utf_tools.' . $phpEx);
 require($phpbb_root_path . 'includes/functions.' . $phpEx);
 require($phpbb_root_path . 'includes/functions_user.' . $phpEx);
+include($phpbb_root_path . 'includes/functions_compatibility.' . $phpEx);
 
-$db = new $sql_db();
-$cache = new cache();
+$phpbb_class_loader_ext = new \phpbb\class_loader('\\', "{$phpbb_root_path}ext/", $phpEx);
+$phpbb_class_loader_ext->register();
 
-// Connect to DB
-if (!@$db->sql_connect($dbhost, $dbuser, $dbpasswd, $dbname, $dbport, false, false))
+// Set up container
+try
 {
-	exit;
+	$phpbb_container_builder = new \phpbb\di\container_builder($phpbb_root_path, $phpEx);
+	$phpbb_container = $phpbb_container_builder->with_config($phpbb_config_php_file)->get_container();
 }
-unset($dbpasswd);
+catch (InvalidArgumentException $e)
+{
+	if (PHPBB_ENVIRONMENT !== 'development')
+	{
+		trigger_error(
+			'The requested environment ' . PHPBB_ENVIRONMENT . ' is not available.',
+			E_USER_ERROR
+		);
+	}
+	else
+	{
+		throw $e;
+	}
+}
 
-$config = $cache->obtain_config();
+$phpbb_class_loader->set_cache($phpbb_container->get('cache.driver'));
+$phpbb_class_loader_ext->set_cache($phpbb_container->get('cache.driver'));
 
-/* Try to get some custom "things"
-$_POST['max'] = $_REQUEST['max'] = 1;
-$_POST['restriction'] = $_REQUEST['restriction'] = "{\"mode\": \"EXACTLY_MATCHES\", \"property\": \"name\", \"value\": \"global moderators\"}";
-$_POST['start'] = $_REQUEST['start'] = 0;
-$_POST['action'] = $_REQUEST['action'] = 'searchGroups';
-$_POST['returnType'] = $_REQUEST['returnType'] = 'ENTITY';
-*/
+$phpbb_container->get('dbal.conn')->set_debug_sql_explain($phpbb_container->getParameter('debug.sql_explain'));
+$phpbb_container->get('dbal.conn')->set_debug_load_time($phpbb_container->getParameter('debug.load_time'));
+require($phpbb_root_path . 'includes/compatibility_globals.' . $phpEx);
+
+register_compatibility_globals();
+
+$user->session_begin(false);
+
+// Re-enable superglobals. This should be rewritten at some point to use the request system
+$request->enable_super_globals();
+
 
 // Initialize auth API
 $api = new phpbb_auth_api($api_config);
@@ -357,58 +371,16 @@ class phpbb_auth_api
 
 	public function authenticate()
 	{
-		global $db, $auth, $config, $phpEx, $phpbb_root_path;
+		global $db, $auth, $config, $phpbb_container;
 
 		$username = request_var('name', '', true);
 		$password = request_var('credential', '', true);
-
 		$err = '';
 
-		// If authentication is successful we redirect user to previous page
-		//$method = trim(basename($config['auth_method']));
-		// hardcode db auth method
-		$method = 'db';
-		include_once($phpbb_root_path . 'includes/auth/auth_' . $method . '.' . $phpEx);
-
-		$method = 'login_' . $method;
-		if (!function_exists($method))
-		{
-			$this->add('error')->add('NO_AUTH');
-			return;
-		}
-
-		$result = $method($username, $password);
-
-		// If the auth module wants us to create an empty profile do so and then treat the status as LOGIN_SUCCESS
-		if ($login['status'] == LOGIN_SUCCESS_CREATE_PROFILE)
-		{
-			// we are going to use the user_add function so include functions_user.php if it wasn't defined yet
-			if (!function_exists('user_add'))
-			{
-				include($phpbb_root_path . 'includes/functions_user.' . $phpEx);
-			}
-
-			user_add($login['user_row'], (isset($login['cp_data'])) ? $login['cp_data'] : false);
-
-			$sql = 'SELECT user_id, username, user_password, user_passchg, user_email, user_type
-				FROM ' . USERS_TABLE . "
-				WHERE username_clean = '" . $db->sql_escape(utf8_clean_string($username)) . "'";
-			$result = $db->sql_query($sql);
-			$row = $db->sql_fetchrow($result);
-			$db->sql_freeresult($result);
-
-			if (!$row)
-			{
-				$this->add('error')->add('Failed to create profile');
-				return;
-			}
-
-			$result = array(
-				'status'    => LOGIN_SUCCESS,
-				'error_msg' => false,
-				'user_row'  => $row,
-			);
-		}
+		/* @var $provider_collection \phpbb\auth\provider_collection */
+		$provider_collection = $phpbb_container->get('auth.provider_collection');
+		$provider = $provider_collection->get_provider();
+		$result = $provider->login($username, $password);
 
 		if (isset($result['user_row']['user_id']))
 		{
@@ -429,9 +401,22 @@ class phpbb_auth_api
 		if ($result['status'] == LOGIN_SUCCESS)
 		{
 			// get avatar url
-			$sql = 'SELECT user_avatar, user_avatar_type, user_avatar_width, user_avatar_height
-				FROM ' . USERS_TABLE . '
-				WHERE user_id = ' . $result['user_row']['user_id'];
+			$sql = 'SELECT u.user_avatar, u.user_avatar_type, u.user_avatar_width, u.user_avatar_height';
+
+			// get first/last name
+			if ($this->config['firstname_column'] && $this->config['lastname_column'])
+			{
+				$sql .= ', pf.pf_' . $this->config['firstname_column'] . ' as firstname, pf.pf_' . $this->config['lastname_column'] . ' as lastname';
+			}
+
+			$sql .= ' FROM ' . USERS_TABLE . ' u';
+
+			if ($this->config['firstname_column'] && $this->config['lastname_column'])
+			{
+				$sql .= ' LEFT JOIN ' . PROFILE_FIELDS_DATA_TABLE . ' pf ON (u.user_id = pf.user_id)';
+			}
+
+			$sql .= 'WHERE u.user_id = ' . $result['user_row']['user_id'];
 			$sql_result = $db->sql_query($sql);
 			$row = $db->sql_fetchrow($sql_result);
 			$db->sql_freeresult($sql_result);
@@ -440,6 +425,12 @@ class phpbb_auth_api
 			$result['user_row']['user_avatar_type']   = $row['user_avatar_type'];
 			$result['user_row']['user_avatar_width']  = $row['user_avatar_width'];
 			$result['user_row']['user_avatar_height'] = $row['user_avatar_height'];
+
+			if ($this->config['firstname_column'] && $this->config['lastname_column'])
+			{
+				$result['user_row']['firstname'] = $row['firstname'];
+				$result['user_row']['lastname'] = $row['lastname'];
+			}
 
 			$this->add('success')->add($this->user_row_line($result['user_row']));
 			return;
@@ -494,9 +485,6 @@ class phpbb_auth_api
 			// Is it safe to assume our directory will only search for name? ;)
 			array(
 				'email' => 'u.user_email',
-/*				'lastName' => 'firstname',
-				'firstName' => 'lastname', // always empty
-				'displayName' => "CONCAT(firstname, ' ', lastname)",*/
 				'name' => 'u.username_clean',
 				'active' => 'u.user_type'
 			));
