@@ -854,7 +854,7 @@ class SearchRestriction
 		switch ($compareMode)
 		{
 			case 'CONTAINS':
-				$where .= $db->sql_like_expression($db->any_char . $value . $db->any_char);
+				$where .= $db->sql_like_expression($db->get_any_char() . $value . $db->get_any_char());
 			break;
 			case 'EXACTLY_MATCHES':
 				if ($plain_column == 'user_type')
@@ -881,7 +881,7 @@ class SearchRestriction
 				$where .= '< \'' . (int) $value . '\'';
 			break;
 			case 'STARTS_WITH':
-				$where .= $db->sql_like_expression($value . $db->any_char);
+				$where .= $db->sql_like_expression($value . $db->get_any_char());
 			break;
 		}
 
