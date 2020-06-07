@@ -242,12 +242,14 @@ public class phpBBDirectoryServer implements RemoteDirectory
     public User addUser(UserTemplate user, PasswordCredential credential)
         throws OperationFailedException
     {
+        log.info("addUser: " + user.toString());
         throw new OperationFailedException();
     }
 
     @Override
     public UserWithAttributes addUser(UserTemplateWithAttributes user, PasswordCredential credential)
             throws OperationFailedException {
+                log.info("addUser (withAttributes): " + user.toString());
                 throw new OperationFailedException();
     }
 
@@ -255,6 +257,7 @@ public class phpBBDirectoryServer implements RemoteDirectory
     public User updateUser(UserTemplate user)
         throws OperationFailedException
     {
+        log.info("updateUser: " + user.toString());
         throw new OperationFailedException();
     }
 
@@ -262,6 +265,7 @@ public class phpBBDirectoryServer implements RemoteDirectory
     public void updateUserCredential(String username, PasswordCredential credential)
         throws OperationFailedException
     {
+        log.info("updateUserCredential: " + username);
         throw new OperationFailedException();
     }
 
@@ -269,6 +273,7 @@ public class phpBBDirectoryServer implements RemoteDirectory
     public User renameUser(String oldName, String newName)
         throws OperationFailedException, InvalidUserException
     {
+        log.info("renameUser: " + oldName);
         throw new OperationFailedException();
     }
 
@@ -276,6 +281,7 @@ public class phpBBDirectoryServer implements RemoteDirectory
     public void storeUserAttributes(String username, Map<String,Set<String>> attributes)
         throws OperationFailedException
     {
+        log.info("storeUserAttributes: " + username);
         throw new OperationFailedException();
     }
 
@@ -283,6 +289,7 @@ public class phpBBDirectoryServer implements RemoteDirectory
     public void removeUserAttributes(String username, String attributeName)
         throws OperationFailedException
     {
+        log.info("removeUserAttributes: " + username);
         throw new OperationFailedException();
     }
 
@@ -290,13 +297,14 @@ public class phpBBDirectoryServer implements RemoteDirectory
     public void removeUser(String name)
         throws OperationFailedException
     {
+        log.info("removeUser: " + name);
         throw new OperationFailedException();
     }
 
     @Override
     public List searchUsers(EntityQuery query)
     {
-        log.info("crowd-phpbbauth-plugin: searchUsers");
+        log.info("crowd-phpbbauth-plugin: searchUsers - " + query.toString());
 
         List list = new ArrayList<UserTemplate>();
         searchEntities("searchUsers", new UserEntityCreator(getDirectoryId()), query, list);
@@ -340,6 +348,7 @@ public class phpBBDirectoryServer implements RemoteDirectory
     public Group addGroup(GroupTemplate group)
         throws OperationFailedException
     {
+        log.info("addGroup: " + group.toString());
         throw new OperationFailedException();
     }
 
@@ -347,6 +356,7 @@ public class phpBBDirectoryServer implements RemoteDirectory
     public Group updateGroup(GroupTemplate group)
         throws ReadOnlyGroupException
     {
+        log.info("updateGroup: " + group.toString());
         throw new ReadOnlyGroupException(group.getName());
     }
 
@@ -354,6 +364,7 @@ public class phpBBDirectoryServer implements RemoteDirectory
     public Group renameGroup(String oldName, String newName)
         throws OperationFailedException
     {
+        log.info("renameGroup: " + oldName + " to " + newName);
         throw new OperationFailedException();
     }
 
@@ -361,6 +372,7 @@ public class phpBBDirectoryServer implements RemoteDirectory
     public void storeGroupAttributes(String groupName, Map<String,Set<String>> attributes)
         throws OperationFailedException
     {
+        log.info("storeGroupAttributes: " + groupName);
         throw new OperationFailedException();
     }
 
@@ -368,6 +380,7 @@ public class phpBBDirectoryServer implements RemoteDirectory
     public void removeGroupAttributes(String groupName, String attributeName)
         throws OperationFailedException
     {
+        log.info("removeGroupAttributes: " + groupName);
         throw new OperationFailedException();
     }
 
@@ -375,13 +388,14 @@ public class phpBBDirectoryServer implements RemoteDirectory
     public void removeGroup(String name)
         throws ReadOnlyGroupException
     {
+        log.info("removeGroup: " + name);
         throw new ReadOnlyGroupException(name);
     }
 
     @Override
     public List searchGroups(EntityQuery query)
     {
-        log.info("crowd-phpbbauth-plugin: searchGroups");
+        log.info("crowd-phpbbauth-plugin: searchGroups - " + query.toString());
 
         List list = new ArrayList<GroupTemplate>();
         searchEntities("searchGroups", new GroupEntityCreator(getDirectoryId()), query, list);
@@ -443,6 +457,7 @@ public class phpBBDirectoryServer implements RemoteDirectory
     public BoundedCount countDirectMembersOfGroup(String groupName, int querySizeHint)
         throws OperationFailedException
     {
+        log.info("countDirectMembersOfGroup: " + groupName);
         throw new OperationFailedException();
     }
 
@@ -450,6 +465,7 @@ public class phpBBDirectoryServer implements RemoteDirectory
     public void addUserToGroup(String username, String groupName)
         throws ReadOnlyGroupException
     {
+        log.info("addUserToGroup: " + username + ", " + groupName);
         throw new ReadOnlyGroupException(groupName);
     }
 
@@ -457,6 +473,7 @@ public class phpBBDirectoryServer implements RemoteDirectory
     public void addGroupToGroup(String childGroup, String parentGroup)
         throws ReadOnlyGroupException
     {
+        log.info("addGroupToGroup: " + childGroup + ", " + parentGroup);
         throw new ReadOnlyGroupException(parentGroup);
     }
 
@@ -464,6 +481,7 @@ public class phpBBDirectoryServer implements RemoteDirectory
     public void removeUserFromGroup(String username, String groupName)
         throws ReadOnlyGroupException
     {
+        log.info("removeUserFromGroup: " + username + ", " + groupName);
         throw new ReadOnlyGroupException(groupName);
     }
 
@@ -471,13 +489,14 @@ public class phpBBDirectoryServer implements RemoteDirectory
     public void removeGroupFromGroup(String childGroup, String parentGroup)
         throws MembershipNotFoundException
     {
+        log.info("removeGroupFromGroup: " + childGroup + ", " + parentGroup);
         throw new MembershipNotFoundException(childGroup, parentGroup);
     }
 
     @Override
     public List searchGroupRelationships(MembershipQuery query)
     {
-        log.info("crowd-phpbbauth-plugin: searchGroupRelationships");
+        log.info("crowd-phpbbauth-plugin: searchGroupRelationships - " + query.toString());
 
         EntityCreator creator;
         List list;
@@ -549,6 +568,7 @@ public class phpBBDirectoryServer implements RemoteDirectory
     public void expireAllPasswords()
         throws OperationFailedException
     {
+        log.info("expireAllPasswords");
         throw new OperationFailedException();
     }
 
@@ -603,6 +623,7 @@ public class phpBBDirectoryServer implements RemoteDirectory
 
     protected void searchEntities(String action, EntityCreator entityCreator, EntityQuery query, List list)
     {
+        log.info("searchEntities: " + action + ", " + query.toString());
         HashMap<String, String> params = new HashMap<String, String>();
         params.put("action", action);
         params.put("start", new Integer(query.getStartIndex()).toString());
@@ -610,7 +631,7 @@ public class phpBBDirectoryServer implements RemoteDirectory
 
         String returnType = (query.getReturnType() == String.class) ? "NAME" : query.getReturnType().toString();
 
-        if (query.getReturnType() == User.class || query.getReturnType() == Group.class)
+        if (query.getReturnType() == User.class || query.getReturnType() == Group.class || query.getReturnType() == GroupWithAttributes.class)
         {
             returnType = "ENTITY";
         }
@@ -627,7 +648,8 @@ public class phpBBDirectoryServer implements RemoteDirectory
         if (result.size() > 0)
         {
             log.info("crowd-phpbbauth-plugin: returnType: " + returnType);
-            log.info("crowd-phpbbauth-plugin: result: " + result.get(0));
+            log.info("crowd-phpbbauth-plugin: Num results: " + String.valueOf(result.size()));
+            log.info("crowd-phpbbauth-plugin: result[0]: " + result.get(0));
         }
 
         for (Iterator it = result.iterator(); it.hasNext(); )
@@ -642,6 +664,7 @@ public class phpBBDirectoryServer implements RemoteDirectory
                 }
                 catch (ObjectNotFoundException e)
                 {
+                    log.info("Exception: " + e.toString());
                 }
             }
             else

@@ -38,5 +38,6 @@ $api_config = array(
 		228725, // on moderation queue
 		228695, // without edit
 		84421, // Former Team Members
+		228841, // Obvious spambots
 	),
 );
